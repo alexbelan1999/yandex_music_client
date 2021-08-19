@@ -3,10 +3,14 @@ from yandex_music import Client
 
 client = Client.from_credentials(login, password)
 
-for track in client.users_likes_tracks():
-    title = ""
-    for artist in track.fetch_track().artists:
-        title += artist.name + " "
-    title += track.fetch_track().title + ".mp3"
+for playlist in client.users_playlists_list():
+    if playlist.title == "Aris":
+        title = "./" + playlist.title + "/"
 
-    print(track.fetch_track().download(title, bitrate_in_kbps=320))
+        for track in client.users_playlists(playlist.kind).tracks:
+
+            for artist in track.fetch_track().artists:
+                title += artist.name + " "
+            title += track.fetch_track().title + ".mp3"
+
+            track.fetch_track().download(title, bitrate_in_kbps=320)
