@@ -6,7 +6,6 @@ deprecation==2.1.0
 eyed3==0.9.6
 filetype==1.0.7
 flake8==3.9.2
-flake8-docstrings==1.6.0
 flake8-import-order==0.18.1
 future==0.18.2
 idna==2.10
