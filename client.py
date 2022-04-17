@@ -1,38 +1,43 @@
-from itertools import product
-from multiprocessing import Manager, Pool
+"""
+Yandex music client module.
+
+Description: this file contains methods for work with yandex music client.
+File: client.py
+Author: Alexey Belan
+
+"""
 import os
 import time
 
 from config import music_dir_path, token
 from work_with_mp3 import save_mp3
+import yandex_music
 from yandex_music import Client
 
 
-def split_list(arr, size):
-    result_arr = []
-    while len(arr) > size:
-        piece = arr[:size]
-        result_arr.append(piece)
-        arr = arr[size:]
-    result_arr.append(arr)
-    return result_arr
+def download_track(playlist_title: str, track: yandex_music.TrackShort):
+    """
+    Method for dowload track.
 
+    Args:
+        playlist_title (str) - playlist title
+        track (yandex_music.TrackShort) - track to download
 
-def dowload_track(playlist_title, track):
-    print("Start")
+    Return:
+        True if track download else False
+    """
+
     clock_track = time.time()
     playlist_path = music_dir_path + playlist_title + "/"
     os.makedirs(playlist_path, exist_ok=True)
     full_track = track.fetch_track()
 
-    track_title = full_track.title if full_track.version is None else full_track.title + " (" + full_track.version + ")"
+    track_title = full_track.title if full_track.version is None else f"{full_track.title} ({full_track.version})"
     artists = ", ".join([artist.name for artist in full_track.artists])
     for replace in [(r"/", "_"), ('"', ""), ("?", ""), (">", "("), ("<", ")"), (":", " ")]:
         track_title = track_title.replace(*replace)
 
-    file_path = "{}{} - {}.mp3".format(playlist_path,
-                                       artists.replace(r"/", "_"),
-                                       track_title)
+    file_path = f"{playlist_path}{artists.replace(r'/', '_')} - {track_title}.mp3"
     available_bitrate = []
     for info in full_track.get_download_info():
         if info["codec"] == "mp3":
@@ -53,28 +58,16 @@ def dowload_track(playlist_title, track):
             success = 0
     else:
         success = None
-    avg_time = time.time() - clock_track
-
-    print("Finish ", avg_time)
+    print(f"Track {track_title} downloaded in {round(time.time() - clock_track, 3)} seconds")
     return True if success is None else False
-
-
-def tracks_loop(tracks):
-    for item in tracks[0]:
-        with tracks[3]:
-            tracks[1].value += 1
-        print(
-            f"Track {tracks[1].value}/{tracks[2].value}"
-            f" {round(((tracks[1].value / tracks[2].value) * 100), 2)} % download {dowload_track(*item)}")
 
 
 errors = []
 
 if __name__ == '__main__':
-    # client = Client.from_credentials(login, password, captcha_callback=proc_captcha)
-    # print(client.token)
-    client = Client.from_token(token, report_new_fields=False)
-    client.accountSettingsSet(timeout=300)
+    client: Client = Client(token).init()
+    client.accountSettingsSet(timeout=360)
+
     clock = time.time()
     tracks = []
     for playlist in client.users_playlists_list():
@@ -82,21 +75,12 @@ if __name__ == '__main__':
         for track in client.users_playlists(playlist.kind).tracks:
             tracks.append((playlist_title, track))
 
-    with Manager() as manager:
-        lock = manager.Lock()
-        n = manager.Value(int, 0)
-        len_tracks = manager.Value(int, len(tracks))
+    print(f"Make tracks completed in {round(time.time() - clock, 3)} seconds")
 
-        with Pool() as pool:
-            cpu_count = os.cpu_count()
-            subcount = len_tracks.value // cpu_count
-            if len_tracks.value % cpu_count:
-                subcount += 1
-            slice_size = subcount
-            
-            data = product(split_list(tracks, int(slice_size)), [n], [len_tracks], [lock])
-            pool.map(tracks_loop, data)
+    for track in tracks:
+        download_track(*track)
 
-    print("All time: ", (time.time() - clock) / 60.0)
+    print(f"All time: , {round((time.time() - clock) / 60.0, 3)} minutes")
+
     for error in errors:
         print(error)

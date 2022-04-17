@@ -1,0 +1,11 @@
+[flake8]
+max-line-length = 120
+exclude=venv/
+max-complexity = 10
+
+# setting flake8-import-order
+application-import-names = .
+import-order-style = google
+
+# google docstring conventions http://www.pydocstyle.org/en/latest/error_codes.html#default-conventions
+ignore = D202, D213, D215, D401, D404, D406, D407, D408, D409, D413, C901
